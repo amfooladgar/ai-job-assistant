@@ -1,4 +1,4 @@
-# 🤖 AI Job Scout Agent
+# 🤖 AI Job Assistant Agent
 
 An autonomous, local multi-agent job search and candidate-matching assistant that automates target board planning, real-time scraping, match scoring, resume alignment analysis, and cover letter drafting.
 
