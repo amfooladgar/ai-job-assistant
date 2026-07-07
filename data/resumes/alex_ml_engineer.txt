@@ -1,0 +1,31 @@
+Alex Reed
+San Francisco, CA | alex.reed@email.com | (123) 456-7890
+
+SUMMARY
+PhD graduate with 4+ years of research experience in Deep Learning, NLP, and Reinforcement Learning from Human Feedback (RLHF). Expert in training, fine-tuning, and evaluating large generative models.
+
+EDUCATION
+PhD in Computer Science (Specialization: AI/ML)
+Stanford University | 2018 - 2022
+Thesis: Scalable Training of Large Language Models and Reinforcement Learning from Human Feedback
+
+BS in Computer Science
+Stanford University | 2014 - 2018
+
+TECHNICAL SKILLS
+Programming Languages: Python, C++, SQL
+Frameworks & Libraries: PyTorch, Hugging Face, JAX, NumPy, Pandas, Scikit-Learn
+ML Concepts: Deep Learning, Natural Language Processing (NLP), Large Language Models (LLMs), Reinforcement Learning (RL), Transformers, RAG
+
+EXPERIENCE
+AI Research Intern | OpenAI
+Summer 2021
+- Worked on scalability improvements for large transformer models.
+- Implemented customized PyTorch parallel training loops that improved training speed by 15%.
+- Fine-tuned models using RLHF datasets, aligning outputs with human guidelines.
+
+Graduate Research Assistant | Stanford AI Lab
+2018 - 2022
+- Conducted research on generative AI, resulting in 4 publications in top-tier conferences (NeurIPS, ICML, ACL).
+- Developed novel decoding algorithms using JAX and PyTorch to speed up inference times for transformers.
+- Taught advanced graduate course on Natural Language Processing.

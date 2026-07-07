@@ -1,0 +1,26 @@
+Alex Reed
+San Francisco, CA | alex.reed@email.com | (123) 456-7890
+
+SUMMARY
+Frontend Web Developer with 3 years of experience building modern, responsive user interfaces. Specialized in React, TypeScript, Java backend integration, and web styling frameworks.
+
+EDUCATION
+BS in Web Development
+Boston University | 2017 - 2021
+
+TECHNICAL SKILLS
+Programming Languages: JavaScript, TypeScript, Java, HTML, CSS, C#
+Frameworks & Libraries: React, Redux, Node.js, Express, TailwindCSS, Bootstrap, Angular
+Other: REST APIs, Git, Webpack, Responsive Design
+
+EXPERIENCE
+Frontend Developer | WebTech Solutions
+2021 - Present
+- Designed and built user interfaces using React and TypeScript for e-commerce platforms.
+- Collaborated with design teams to translate Figma mockups into pixel-perfect web pages using CSS and Tailwind.
+- Built backend API endpoints in Node.js and Java Spring Boot to interface with SQL databases.
+
+Web Developer Intern | DevStudio
+Summer 2020
+- Built and maintained websites using HTML/CSS, JavaScript, and Bootstrap.
+- Implemented client-side routing and state management in React.

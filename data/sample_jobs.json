@@ -1,0 +1,57 @@
+[
+  {
+    "id": "sample-1",
+    "title": "AI Research Engineer, Large Language Models",
+    "company": "DeepMind Technologies",
+    "location": "San Francisco, CA",
+    "remote": true,
+    "url": "https://example.com/jobs/deepmind-ai-research-engineer",
+    "description": "We are seeking a Research Engineer to join our generative AI team. You will work on pre-training and fine-tuning state-of-the-art Large Language Models. Requirements: PhD in Computer Science or equivalent research experience. Expert in Python and PyTorch. Experience with Reinforcement Learning from Human Feedback (RLHF) is highly preferred.",
+    "required_skills": ["Python", "PyTorch", "LLM", "RLHF", "Deep Learning"],
+    "posted_date": "2026-07-01"
+  },
+  {
+    "id": "sample-2",
+    "title": "Machine Learning Engineer - Reinforcement Learning",
+    "company": "Autonomous Systems Corp",
+    "location": "Seattle, WA",
+    "remote": true,
+    "url": "https://example.com/jobs/asc-ml-engineer-rl",
+    "description": "Join our robotics group to design and implement reinforcement learning algorithms for navigation. Responsibilities include building simulation environments and training deep RL models. Qualifications: Strong programming skills in Python and PyTorch, experience training large scale deep neural networks, and understanding of RL fundamentals.",
+    "required_skills": ["Python", "PyTorch", "Reinforcement Learning", "Deep Learning"],
+    "posted_date": "2026-07-02"
+  },
+  {
+    "id": "sample-3",
+    "title": "Applied Scientist - Computer Vision",
+    "company": "VisionTech Inc",
+    "location": "Boston, MA",
+    "remote": false,
+    "url": "https://example.com/jobs/visiontech-applied-scientist",
+    "description": "Looking for an Applied Scientist to develop vision algorithms for medical imaging. The ideal candidate has experience with convolutional neural networks and object detection. Requirement: PhD or Masters in Computer Science or related. Python, PyTorch, OpenCV required.",
+    "required_skills": ["Python", "PyTorch", "Computer Vision", "OpenCV"],
+    "posted_date": "2026-07-03"
+  },
+  {
+    "id": "sample-4",
+    "title": "Senior Java Software Engineer",
+    "company": "Enterprise Solutions Corp",
+    "location": "Chicago, IL",
+    "remote": false,
+    "url": "https://example.com/jobs/esc-senior-java-engineer",
+    "description": "Seeking a Senior Backend Engineer to maintain and scale our enterprise banking platform. Requirements: 8+ years of experience with Java, Spring Boot, microservices architecture, and SQL database optimization.",
+    "required_skills": ["Java", "Spring Boot", "SQL", "Microservices"],
+    "posted_date": "2026-06-28"
+  },
+  {
+    "id": "sample-5",
+    "title": "Frontend React Web Developer",
+    "company": "Creative Agency Inc",
+    "location": "New York, NY",
+    "remote": true,
+    "url": "https://example.com/jobs/creative-agency-frontend-dev",
+    "description": "Looking for a creative frontend developer to build responsive web interfaces for client websites. Requirements: Proficient in HTML, CSS, JavaScript, React, and modern UI libraries like Tailwind CSS.",
+    "required_skills": ["JavaScript", "React", "HTML", "CSS", "Tailwind CSS"],
+    "posted_date": "2026-06-30"
+  }
+]

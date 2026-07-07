@@ -1,0 +1,75 @@
+# ==============================================================================
+# Job Scout Matching Criteria & User Profile
+# Edit this file to customize how the agent filters and ranks jobs.
+# ==============================================================================
+
+# Target Roles
+target_roles:
+  - "Machine Learning Engineer"
+  - "ML Engineer"
+  - "AI Research Engineer"
+  - "Applied Scientist"
+  - "Research Scientist"
+  - "AI Engineer"
+
+# Location Preferences
+preferred_locations:
+  - "San Francisco, CA"
+  - "New York, NY"
+  - "Seattle, WA"
+  - "Boston, MA"
+  
+# Remote Preferences: Allowed values: "Remote", "Hybrid", "On-site"
+remote_preference: "Remote"
+
+# Keyword Filters
+required_keywords:
+  - "Python"
+  - "PyTorch"
+
+nice_to_have_keywords:
+  - "LLM"
+  - "Generative AI"
+  - "Transformers"
+  - "RLHF"
+  - "Agentic AI"
+  - "RAG"
+  
+avoid_keywords:
+  - "Java"
+  - "C#"
+  - "Frontend"
+  - "Web Developer"
+
+# User Credentials
+education:
+  degree: "PhD"
+  field: "Computer Science"
+  specialization: "Artificial Intelligence / Machine Learning"
+  thesis_topic: "Scalable Training of Large Language Models and Reinforcement Learning from Human Feedback"
+
+skills:
+  programming_languages:
+    - "Python"
+    - "C++"
+    - "SQL"
+  frameworks_libraries:
+    - "PyTorch"
+    - "Hugging Face"
+    - "JAX"
+    - "NumPy"
+    - "Pandas"
+    - "Scikit-Learn"
+  ml_concepts:
+    - "Deep Learning"
+    - "Natural Language Processing (NLP)"
+    - "Large Language Models (LLMs)"
+    - "Reinforcement Learning (RL)"
+
+experience_summary: >
+  PhD graduate with 4+ years of research experience in Deep Learning and Natural Language Processing.
+  Published in top-tier conferences (NeurIPS, ICML, ACL). Expert in optimizing, fine-tuning, and evaluating
+  large generative models. Looking for applied research and engineering roles in AI.
+
+# Minimum overall score required to trigger notifications (scale from 0.0 to 1.0)
+minimum_match_score: 0.75
