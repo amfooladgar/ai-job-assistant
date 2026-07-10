@@ -55,11 +55,11 @@ class ResumeSelectorAgent:
         # 1. Scan resume files
         resume_files = [
             f for f in self.resumes_dir.iterdir()
-            if f.is_file() and f.suffix.lower() in {".txt", ".md", ".json"}
+            if f.is_file() and f.suffix.lower() in {".txt", ".md", ".json", ".pdf", ".docx"}
         ]
         
         if not resume_files:
-            logger.warning(f"No text-based resumes found in: {self.resumes_dir}")
+            logger.warning(f"No resumes found in: {self.resumes_dir}")
             return "", "", "No resume files found in directory."
             
         # 2. Compile or load cached profiles
@@ -69,8 +69,7 @@ class ResumeSelectorAgent:
         for file_path in resume_files:
             filename = file_path.name
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    text = f.read()
+                text = self._read_file_content(file_path)
             except Exception as e:
                 logger.error(f"Failed to read resume file {filename}: {e}")
                 continue
@@ -97,6 +96,30 @@ class ResumeSelectorAgent:
             
         # Return filename, raw text, and reasoning
         return selected_file, contents.get(selected_file, ""), reasoning
+        
+    def _read_file_content(self, file_path: Path) -> str:
+        """Reads content from .txt, .md, .json, .pdf, or .docx file formats."""
+        suffix = file_path.suffix.lower()
+        if suffix in {".txt", ".md", ".json"}:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        elif suffix == ".pdf":
+            import pypdf
+            reader = pypdf.PdfReader(file_path)
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            return "\n".join(text_parts)
+        elif suffix == ".docx":
+            import docx
+            doc = docx.Document(file_path)
+            text_parts = [p.text for p in doc.paragraphs]
+            return "\n".join(text_parts)
+        else:
+            raise ValueError(f"Unsupported file format: {suffix}")
+
         
     def _profile_resume(self, text: str) -> dict:
         """Parses a resume using Gemini or a fallback parser."""
@@ -146,43 +169,58 @@ Ensure the response contains only the raw JSON payload. Do not add markdown form
         return self._profile_resume_fallback(text)
         
     def _profile_resume_fallback(self, text: str) -> dict:
-        """Heuristic fallback resume parser."""
+        """Heuristic fallback resume parser with correct skill capitalization."""
         programming_languages = []
         frameworks_libraries = []
         ml_concepts = []
         
-        common_langs = ["python", "c++", "sql", "javascript", "typescript", "java", "c#", "html", "css"]
-        common_frameworks = ["pytorch", "tensorflow", "jax", "hugging face", "react", "redux", "node.js", "express", "tailwindcss", "bootstrap", "angular"]
-        common_concepts = ["deep learning", "natural language processing", "nlp", "large language models", "llms", "reinforcement learning", "rl", "transformers", "rag"]
+        lang_map = {
+            "python": "Python",
+            "c++": "C++",
+            "sql": "SQL",
+            "javascript": "JavaScript",
+            "typescript": "TypeScript",
+            "java": "Java",
+            "c#": "C#",
+            "html": "HTML",
+            "css": "CSS"
+        }
+        fw_map = {
+            "pytorch": "PyTorch",
+            "tensorflow": "TensorFlow",
+            "jax": "JAX",
+            "hugging face": "Hugging Face",
+            "react": "React",
+            "redux": "Redux",
+            "node.js": "Node.js",
+            "express": "Express",
+            "tailwindcss": "TailwindCSS",
+            "bootstrap": "Bootstrap",
+            "angular": "Angular"
+        }
+        concept_map = {
+            "deep learning": "Deep Learning",
+            "natural language processing": "Natural Language Processing",
+            "nlp": "NLP",
+            "large language models": "Large Language Models",
+            "llms": "LLMs",
+            "reinforcement learning": "Reinforcement Learning",
+            "rl": "RL",
+            "transformers": "Transformers",
+            "rag": "RAG"
+        }
         
         text_lower = text.lower()
-        for lang in common_langs:
-            if lang in text_lower:
-                programming_languages.append(lang.capitalize())
-        for fw in common_frameworks:
-            if fw in text_lower:
-                # Format Hugging Face nicely
-                if fw == "hugging face":
-                    frameworks_libraries.append("Hugging Face")
-                elif fw == "node.js":
-                    frameworks_libraries.append("Node.js")
-                elif fw == "tailwindcss":
-                    frameworks_libraries.append("TailwindCSS")
-                else:
-                    frameworks_libraries.append(fw.capitalize())
-        for concept in common_concepts:
-            if concept in text_lower:
-                if concept == "nlp":
-                    ml_concepts.append("NLP")
-                elif concept == "llms":
-                    ml_concepts.append("LLMs")
-                elif concept == "rl":
-                    ml_concepts.append("RL")
-                elif concept == "rag":
-                    ml_concepts.append("RAG")
-                else:
-                    ml_concepts.append(concept.title())
-                    
+        for k, v in lang_map.items():
+            if k in text_lower:
+                programming_languages.append(v)
+        for k, v in fw_map.items():
+            if k in text_lower:
+                frameworks_libraries.append(v)
+        for k, v in concept_map.items():
+            if k in text_lower:
+                ml_concepts.append(v)
+                
         # Guess target roles
         target_roles = []
         roles = ["machine learning engineer", "ml engineer", "ai research engineer", "applied scientist", "research scientist", "ai engineer", "frontend developer", "web developer"]
@@ -208,6 +246,7 @@ Ensure the response contains only the raw JSON payload. Do not add markdown form
             "experience_summary": summary,
             "target_roles": target_roles
         }
+
 
     def _select_best_llm(self, job: JobPosting, profiles: Dict[str, dict]) -> Tuple[str, str]:
         """Uses Gemini to evaluate parsed resume profiles and select the best one."""

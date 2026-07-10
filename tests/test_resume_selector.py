@@ -113,3 +113,45 @@ def test_resume_selection_matching(tmp_path):
     )
     selected_file2, _, reasoning2 = agent.select_best_resume(job_fe)
     assert selected_file2 == "frontend.txt"
+
+def test_resume_formats_pdf_docx(tmp_path):
+    import docx
+    from unittest.mock import MagicMock, patch
+    
+    resumes_dir = tmp_path / "resumes"
+    resumes_dir.mkdir()
+    
+    # 1. Create a DOCX resume
+    doc = docx.Document()
+    doc.add_paragraph("Alex Reed")
+    doc.add_paragraph("Frontend Developer")
+    doc.add_paragraph("Skills: React, TypeScript, CSS, Javascript")
+    docx_path = resumes_dir / "resume.docx"
+    doc.save(docx_path)
+    
+    # 2. Mock a PDF reader response since creating binary PDFs from scratch is complex
+    mock_pdf_page = MagicMock()
+    mock_pdf_page.extract_text = MagicMock(return_value="Alex Reed\nML Engineer\nPyTorch, Python, NLP, LLMs")
+    
+    mock_pdf_reader = MagicMock()
+    mock_pdf_reader.pages = [mock_pdf_page]
+    
+    db = JobDatabase(tmp_path / "test_formats.db")
+    agent = ResumeSelectorAgent(resumes_dir=resumes_dir, db=db, enable_llm_reasoning=False)
+    
+    with patch("pypdf.PdfReader", return_value=mock_pdf_reader):
+        # We simulate that a pdf file exists
+        pdf_path = resumes_dir / "resume.pdf"
+        with open(pdf_path, "w") as f:
+            f.write("mock binary pdf content")
+            
+        # Test loading DOCX content
+        docx_content = agent._read_file_content(docx_path)
+        assert "React" in docx_content
+        assert "TypeScript" in docx_content
+        
+        # Test loading PDF content
+        pdf_content = agent._read_file_content(pdf_path)
+        assert "PyTorch" in pdf_content
+        assert "LLMs" in pdf_content
+

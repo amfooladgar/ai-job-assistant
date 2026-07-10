@@ -28,12 +28,13 @@ Unlike traditional linear scripts or basic API wrappers, this system relies on *
 The architecture divides responsibilities among the following specialized agents:
 
 *   **`PlanningAgent`**: Analyzes user profile preferences (target roles, preferred locations, remote preferences) and CLI overrides to autonomously generate a structured `SearchPlan` consisting of the optimal sources, search queries, and planning reasoning.
-*   **`MultiSourceSearchAgent`**: Orchestrates parallel queries across all planned job sources (local sample database, Arbeitnow API, Remotive API), merging results, logging statistics, and deduplicating listings by normalized URLs.
+*   **`MultiSourceSearchAgent`**: Orchestrates parallel queries across all planned job sources (local sample database, Arbeitnow API, Remotive API, URL), merging results, logging statistics, and deduplicating listings by normalized URLs.
 *   **`RankingAgent` (JobMatcher)**: Computes candidate-to-job matches based on profile parameters (roles weighting 30%, required skills weighting 40%, and custom keywords weighting 30%), applying penalties for legacy technology stacks.
 *   **`JobFitAgent`**: Performs semantic candidate fit evaluation to determine overall alignment, cataloging candidate strengths, identifying skill/experience gaps, and recommending whether to apply.
-*   **`ResumeFitAgent`**: Computes case-insensitive skill overlap maps, calculates missing requirements, formulates transferable strengths, and devises a resume positioning angle for each match.
-*   **`ApplicationAgent`**: Personalized drafting agent that prepares cover letters, referral messages, and LinkedIn outreach notes tailored specifically for the top-matched job opportunity.
-*   **`NotificationAgent` (JobNotifier)**: Formats final outputs, printing execution pipelines, matching metrics, fit analyses, resume angles, and application materials to the console.
+*   **`ResumeProfilerAgent`**: Extracted structured profile records (skills, education, summary) from raw resumes and caches them in the SQLite DB based on SHA-256 content hashes to avoid redundant LLM queries.
+*   **`ResumeSelectorAgent`**: Automatically scans the resumes folder (supporting `.txt`, `.md`, `.json`, `.pdf`, `.docx`) and selects the single most relevant resume matching the job post requirements.
+*   **`AtsTailorAgent`**: Evaluates the selected resume against the job description and suggests tailored ATS optimizations (summaries, keywords, and rephrased bullets) without fabricating any facts or experience.
+*   **`NotificationAgent` (JobNotifier)**: Formats final outputs, printing execution pipelines, match metrics, fit analyses, chosen resumes, and detailed ATS suggestions to the console.
 
 ---
 
@@ -42,18 +43,22 @@ The architecture divides responsibilities among the following specialized agents
 ```mermaid
 graph TD
     A[Start main.py] --> B[Parse CLI Arguments]
-    B --> C[Load user_profile.yaml]
-    C --> D[PlanningAgent Resolves Sources & Query]
-    D --> E[MultiSourceSearchAgent Fetches Postings]
-    E --> F[Merge & Deduplicate by URL]
-    F --> G[RankingAgent Heuristic Matching]
-    G --> H[Filter by min_score]
-    H --> I[JobFitAgent LLM Fit Reasoning]
-    I --> J[ResumeFitAgent Overlaps & Angle]
-    J --> K[ApplicationAgent Top-Match Drafts]
-    K --> L[Save to SQLite Storage]
-    L --> M[NotificationAgent CLI Output]
+    B --> C{Is --job-url Specified?}
+    C -->|Yes| D[Scrape Job Posting & Parse via Gemini]
+    C -->|No| E[Load user_profile.yaml & Plan Search]
+    E --> F[MultiSourceSearchAgent Fetches Postings]
+    F --> G[Merge & Deduplicate by URL]
+    G --> H[RankingAgent Heuristic Matching]
+    H --> I[Filter by min_score]
+    D --> J[JobFitAgent LLM Fit Reasoning]
+    I --> J
+    J --> K[ResumeProfilerAgent Hash Caching]
+    K --> L[ResumeSelectorAgent Selects Best Resume]
+    L --> M[AtsTailorAgent Suggests Changes]
+    M --> N[Save to SQLite Storage]
+    N --> O[NotificationAgent CLI Output]
 ```
+
 
 ---
 
@@ -146,9 +151,15 @@ python3 main.py --source all --min-score 0.5
 ```
 
 ### 3. LLM Reasoning Mode
-Enable optional Gemini-powered reasoning to perform deep job fit analysis, resume positioning, and custom cover letter drafting (requires configuring `GEMINI_API_KEY` in your environment):
+Enable optional Gemini-powered reasoning to perform deep job fit analysis, resume selection, and custom cover letter drafting (requires configuring `GEMINI_API_KEY` in your environment):
 ```bash
 python3 main.py --source sample --enable-llm-reasoning
+```
+
+### 4. Direct Job URL Ingestion & Resume Optimization
+Instruct the agent to scrape a job post from a specific URL, load resumes from your `data/resumes/` folder (supporting `.txt`, `.md`, `.json`, `.pdf`, `.docx`), select the best-matching resume, and generate tailing ATS recommendations:
+```bash
+python3 main.py --job-url "https://www.arbeitnow.com/jobs/sample-job-url" --enable-llm-reasoning
 ```
 
 ---
@@ -157,6 +168,7 @@ python3 main.py --source sample --enable-llm-reasoning
 
 This application is designed to be production-safe, private, and cost-controlled:
 
+*   **Resume Profile Caching**: A SHA-256 content hash is computed for each resume file in `data/resumes/`. The parsed profile details are persisted in the local SQLite database. The agent only re-analyzes a resume file when it is newly added or modified, saving Gemini API calls.
 *   **Local-First Design**: The agent executes fully locally on your machine by default. High-cost API operations are completely avoided unless explicitly requested.
 *   **Gemini Disabled by Default**: LLM reasoning features are optional. If the `--enable-llm-reasoning` flag is absent, the agent uses fast, free deterministic fallback logic.
 *   **No Cloud Deployments**: Runs as a standard CLI script. There is no requirement for paid cloud servers, VM setups, or third-party database subscriptions.
@@ -166,7 +178,6 @@ This application is designed to be production-safe, private, and cost-controlled
 
 ## ⚠️ Current Limitations
 
-*   **Mock Resume Proxy**: Evaluates candidate fit based on the text list in `user_profile.yaml` rather than extracting details from an uploaded PDF or Word resume.
 *   **Public Feeds Only**: Connects to public, unauthenticated feed endpoints which do not require key authorization.
 *   **Local Substring Matching**: By default, deterministic matching matches exact substring queries, which does not capture deep semantic relations without enabling LLM mode.
 
@@ -174,8 +185,8 @@ This application is designed to be production-safe, private, and cost-controlled
 
 ## 🗺️ Future Work
 
-*   **Resume PDF Parsing**: Direct extraction and ingestion of candidate profile parameters from uploaded PDF/Word resume documents.
 *   **Email & Slack Notifications**: Real-time push alert integrations utilizing Slack webhooks and SMTP mail dispatches.
 *   **Scheduling & Monitoring**: Integrated cron task scheduling and heartbeat health check monitoring services.
 *   **More Job Boards**: Authenticated scrapers and API adapters for additional job boards (e.g., LinkedIn, Greenhouse, Lever).
 *   **UI Dashboard**: A local visual web application (e.g., Streamlit or React) to explore, filter, and track applications.
+

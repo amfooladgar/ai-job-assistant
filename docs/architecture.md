@@ -6,26 +6,33 @@ This document explains the architecture, modular layout, local-first design cons
 
 ## 🔄 Agent Pipeline
 
-The execution flow of the agent is modeled as an automated, linear pipeline. Running the orchestrator invokes these 5 distinct stages sequentially:
+The execution flow of the agent is modeled as an automated, linear pipeline. Running the orchestrator invokes these 7 distinct stages sequentially:
 
 ```
 [Start]
    │
    ▼
-[1. Fetch Listings] ────────► Queries local or remote sources (scrapers, APIs)
-   │                          to obtain raw job postings.
+[1. Fetch Listings] ────────► Queries local sources, APIs, or a specific user-provided 
+   │                          URL (via `UrlJobSource` utilizing BeautifulSoup & Gemini).
    ▼
-[2. Extract Metadata] ──────► Uses Gemini to extract structured fields
-   │                          (e.g., specific skills, remote status) from descriptions.
+[2. Extract Metadata] ──────► Uses Gemini to extract structured fields (e.g., job title,
+   │                          company name, location, description, required skills).
    ▼
 [3. Match & Rank] ──────────► Scores job postings based on candidate's user profile
    │                          using keyword and semantic similarity heuristics.
    ▼
-[4. Persist Results] ───────► Writes newly matched postings to SQLite, preventing duplicates
-   │                          by checking the UNIQUE URL key constraint.
+[4. Profile Resumes] ───────► Scans the resumes folder, computes a SHA-256 content hash, 
+   │                          and checks cache. Uses LLM to extract resume details 
+   │                          and caches them in SQLite if new/changed.
    ▼
-[5. Alert / Dispatch] ──────► Generates formatted outputs and dispatches notifications
-   │                          (e.g., console log, email, Slack).
+[5. Select Best Resume] ────► Automatically evaluates cached/parsed resume profiles
+   │                          and selects the best resume for the posting.
+   ▼
+[6. ATS Tailoring] ─────────► Compares chosen resume with the job post to suggest
+   │                          non-fabricated keyword updates and bullet improvements.
+   ▼
+[7. Persist & Notify] ──────► Writes matched postings, selected resume references, 
+   │                          and ATS recommendations to SQLite and logs CLI summary.
    ▼
  [End]
 ```
@@ -34,71 +41,75 @@ The execution flow of the agent is modeled as an automated, linear pipeline. Run
 
 ## 📂 Modules & System Layout
 
-The codebase uses a clean, object-oriented design patterns within a modular directory structure:
+The codebase uses clean, object-oriented design patterns within a modular directory structure:
 
 ### 1. Main Orchestrator (`src/agent/scout.py`)
 The `JobScoutAgent` class represents the brain of the project. It handles:
 *   Resolving environment configuration settings.
 *   Loading the candidate's YAML user profile.
-*   Iterating through the pipeline stages.
+*   Integrating the `UrlJobSource` to fetch specific links.
+*   Coordinating `ResumeSelectorAgent` and `AtsTailorAgent` workflows.
 
 ### 2. User Profile Model (`src/config/profile.py`)
-Defines the `UserProfile` Pydantic schema which parses and validates `config/user_profile.yaml` at startup. It ensures field types are correct and filters out garbage configuration values.
+Defines the `UserProfile` Pydantic schema which parses and validates `config/user_profile.yaml` at startup.
 
 ### 3. Job Matcher Heuristics (`src/ranking/matcher.py`)
 The `JobMatcher` handles scoring. The match score ($S_{match}$) is defined as:
 \[S_{match} = 0.3 \cdot S_{role} + 0.4 \cdot S_{skills} + 0.3 \cdot S_{keywords} - P_{avoid}\]
-*   **$S_{role}$ (Role Score)**: Degree of overlap between the job title and user's target roles.
-*   **$S_{skills}$ (Skills Score)**: Overlap between the job's required skills and user's profile programming languages, frameworks, and ML concepts.
-*   **$S_{keywords}$ (Keywords Score)**: Overlap of user's required and nice-to-have keywords with the job description.
-*   **$P_{avoid}$ (Avoid Stack Penalty)**: Penalty subtracted if keywords from user's `avoid_keywords` list (e.g. Java, PHP, Frontend) are present.
 
-### 4. Storage Engine (`src/storage/db.py`)
-Manages SQLite operations. The `JobDatabase` initializes the table and manages persistence. Column definitions include serializing lists to JSON strings to maintain relational simplicity in a single file.
+### 4. Storage & Caching Engine (`src/storage/db.py`)
+Manages SQLite operations. In addition to persisting matched job postings in the `jobs` table, the `JobDatabase` now maintains a `resumes` caching table to save extracted resume profiles mapped by filename and SHA-256 content hash.
 
-### 5. Notification Dispatcher (`src/notifications/notifier.py`)
-Formats alert outputs and manages notification payloads. Generates CLI printouts and handles future integrations with Slack or SMTP mail.
+### 5. Multi-Format Source Ingestion (`src/sources/url_source.py`)
+Fetches raw HTML pages using `httpx`, strips script/style tags with `BeautifulSoup`, and extracts structured fields via Gemini into a Pydantic `JobPosting` model.
+
+### 6. Resume Selector Agent (`src/agents/resume_selector_agent.py`)
+Scans the resumes folder (reading `.txt`, `.md`, `.json`, `.pdf`, `.docx` files), computes content hashes, checks the DB cache, extracts profiles using Gemini when cache misses, and matches the target job with the optimal candidate profile.
+
+### 7. ATS Tailoring Agent (`src/agents/ats_tailor_agent.py`)
+Compares the chosen resume with the job requirements. Suggests customized bullet point rephrasings, matched/missing keywords, and a tailored professional summary **without fabricating any experience**.
 
 ---
 
 ## 🤖 Multi-Agent Scaffold Design
 
-To prepare for future Gemini-powered reasoning and autonomous decision making, the single orchestrator pipeline is decoupled into a collaborative **multi-agent team** under `src/agents/`:
+To prepare for Gemini-powered reasoning and autonomous decision making, the single orchestrator pipeline is decoupled into a collaborative **multi-agent team** under `src/agents/`:
 
 ```
-           [OrchestratorAgent]
-             /      |      \
-            /       |       \
-           ▼        ▼        ▼
-    [SearchAgent] [ProfileAgent] [RankingAgent]
-                            \
-                             ▼
-                     [NotificationAgent]
+                 [OrchestratorAgent]
+                /   /      |      \   \
+               /   /       |       \   \
+              ▼   ▼        ▼        ▼   ▼
+     [SearchAgent]   [RankingAgent]  [ResumeSelectorAgent]
+           |               |                 |
+     [ProfileAgent]  [NotificationAgent] [AtsTailorAgent]
 ```
 
 Each agent has a dedicated cognitive boundary and execution scope:
-*   **`SearchAgent`**: Manages the ingestion logic. Interacts with the active scraper sources and fetches listings.
-*   **`ProfileAgent`**: Loads, validates, and builds semantic embeddings or summaries of user preferences.
-*   **`RankingAgent`**: Connects to matching heuristics or LLMs to rank jobs by relevance score.
-*   **`NotificationAgent`**: Generates notification text templates and controls delivery triggers.
-*   **`OrchestratorAgent`**: The central coordinator that feeds outputs between sub-agents and schedules execution loops.
+*   **`SearchAgent`**: Manages active crawler/source listings collection.
+*   **`ProfileAgent`**: Parses YAML configuration parameters.
+*   **`RankingAgent`**: Scores job postings relevance.
+*   **`ResumeSelectorAgent`**: Computes hashes, verifies database caches, profiles new documents, and selects the best matching resume file.
+*   **`AtsTailorAgent`**: Evaluates alignment and generates ATS improvement suggestions without fabrication.
+*   **`NotificationAgent`**: Formats console logs and outputs.
+*   **`OrchestratorAgent`**: Coordinates multi-agent workflows and variables passing.
 
-This multi-agent team has been refactored to support **Google's Agent Development Kit (ADK)** under `src/adk/`. A unified `RootAgent` (an ADK `SequentialAgent`) orchestrates ADK wrappers (`ProfileAdkAgent`, `SearchAdkAgent`, `RankingAdkAgent`, `NotificationAdkAgent`) completely offline. In future iterations, they will be connected to the Google GenAI SDK (`google-genai`) to replace keyword heuristics with Gemini-powered agentic reasoning.
+This multi-agent team supports the Google Agent Development Kit (ADK) under `src/adk/`. A unified `RootAgent` (an ADK `SequentialAgent`) orchestrates ADK wrappers completely offline.
 
 ---
 
-## 🔒 Local-First Design
+## 🔒 Local-First Design & Cache Control
 
-To align with a **local-first capstone philosophy**, the project implements the following principles:
-*   **Zero External Run-Dependencies**: All mock objects and mock schemas are packaged directly within the project. It executes out-of-the-box using python virtual environments.
-*   **File-Based SQLite Storage**: No external database instances (like Postgres or MySQL) are required. Data is maintained in `data/job_scout.db`, keeping everything sandboxed.
-*   **Decoupled Configuration**: Matching criteria is separated into `config/user_profile.yaml` so the candidate doesn't need to rebuild or touch code to adjust target profiles.
+To align with a **local-first capstone philosophy**, the project implements:
+*   **Zero External Run-Dependencies**: All mock objects and mock schemas are packaged directly. PDF/DOCX dependencies (`pypdf`, `python-docx`) are installed in the local virtual environment.
+*   **Persistent Resume Profiling Cache**: Resume files are indexed using content hashes. Parsed profiles are stored in SQLite so the LLM is only called if file content changes, controlling token consumption.
+*   **File-Based SQLite Storage**: sandboxed database in `data/job_scout.db`.
 
 ---
 
 ## 📡 Future Real Job-Source Integrations
 
-In Phase 2, the static `SampleJobSource` will be augmented with active crawlers:
+In Phase 2, the search agents will be augmented with:
 1.  **LinkedIn Search Scraper**: Authenticated HTTP client using BeautifulSoup to parse public LinkedIn jobs.
 2.  **Indeed API / Scraper**: Requests to scrape job cards matching target location search criteria.
 3.  **Google Search API / custom search engine**: Search queries for remote AI roles matching `target_roles` and returning parsed text.
